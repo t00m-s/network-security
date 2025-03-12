@@ -3,6 +3,7 @@
 #include <linux/ip.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -83,4 +84,12 @@ void filter_icmp(char *buffer, size_t buffer_size) {
     return;
   if (icmp_h->code != 0)
     return;
+
+  // From the ICMP packet, you need to read the source IP
+  struct in_addr icmp_saddr;
+  icmp_saddr.s_addr = icmp_h->internet_header.saddr;
+  printf("%s", inet_ntoa(icmp_saddr));
+
+  // From the packet included payload, you need to skip the IP and UDP header,
+  // and read the payload
 }
