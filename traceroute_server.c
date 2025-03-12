@@ -22,9 +22,9 @@ typedef struct ttl_exceeded_header {
   u_int64_t original_datagram_first_64_bits;
 } ttl_exceeded_header;
 
-void filter_icmp(char *buffer, size_t buffer_size);
+void filter_icmp(char *buffer);
 
-int main(int argc, char *argv[]) {
+int main(void) {
   struct packet_mreq mr;
   size_t buf_size = 1500;
   char buf[buf_size];
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
       exit(EXIT_SUCCESS);
     }
     // 4) filter them for the correct type and code.
-    filter_icmp(buf, buf_size);
+    filter_icmp(buf);
   }
 
   // Just in case
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
   exit(EXIT_SUCCESS);
 }
 
-void filter_icmp(char *buffer, size_t buffer_size) {
+void filter_icmp(char *buffer) {
   // Filter ICMP packets
   // cat /etc/protocols says that icmp has protocol == 1
   // I trust it.
