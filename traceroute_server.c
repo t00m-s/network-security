@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <linux/if_packet.h>
 #include <linux/ip.h>
+#include <linux/udp.h>
 #include <net/ethernet.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -85,11 +86,24 @@ void filter_icmp(char *buffer, size_t buffer_size) {
   if (icmp_h->code != 0)
     return;
 
-  // From the ICMP packet, you need to read the source IP
+  // From the ICMP packet, you need to read the source IP (not the one in the
+  // payload)
   struct in_addr icmp_saddr;
-  icmp_saddr.s_addr = icmp_h->internet_header.saddr;
-  printf("%s", inet_ntoa(icmp_saddr));
+  icmp_saddr.s_addr = ip_1_header->saddr;
 
   // From the packet included payload, you need to skip the IP and UDP header,
   // and read the payload
+  // Skipping all the headers
+  size_t total_skip_size = sizeof(struct ether_header) +
+                           (ip_1_header->ihl * 4) +
+                           sizeof(struct ttl_exceeded_header);
+  // Now we're in payload.
+  void *payload = (void *)(buffer + total_skip_size);
+  // Skipping ip header of payload
+  size_t ip_2_header_size = (((struct iphdr *)(payload))->ihl * 4);
+  total_skip_size += ip_2_header_size;
+  total_skip_size += sizeof(struct udphdr);
+
+  u_int8_t *ttl = (u_int8_t *)(buffer + total_skip_size);
+  printf("Source IP: %s \t TTL: %u\n", inet_ntoa(icmp_saddr), *ttl);
 }
