@@ -13,6 +13,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+// NOTE: in the slides there are ipheader and udpheader,
+// they are identical to the linux ones so...
+// importing them made more sense?
 typedef struct ttl_exceeded_header {
   u_int8_t type;
   u_int8_t code;
